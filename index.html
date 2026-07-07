@@ -1,0 +1,1581 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#10242a">
+  <title>West Coast of AUS Route Map</title>
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="preconnect" href="https://server.arcgisonline.com">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #10242a;
+      --muted: #60747a;
+      --paper: #fbfbf7;
+      --panel: rgba(255, 255, 251, 0.94);
+      --line: rgba(16, 36, 42, 0.12);
+      --sea: #0f7b83;
+      --sea-deep: #0a4f58;
+      --coral: #ee6f57;
+      --gold: #f2bd4b;
+      --green: #3b7b5e;
+      --rose: #c85f7c;
+      --shadow: 0 22px 60px rgba(8, 24, 31, 0.22);
+      --radius: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body,
+    .app {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+    }
+
+    body {
+      overflow: hidden;
+      background: #dfe8e7;
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+      letter-spacing: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button {
+      color: inherit;
+      font: inherit;
+    }
+
+    .app {
+      position: relative;
+      min-height: 100dvh;
+    }
+
+    #map {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, #d7e7e8 0%, #eef3ed 58%, #e5ded4 100%);
+      z-index: 1;
+    }
+
+    .topbar {
+      position: fixed;
+      top: calc(12px + env(safe-area-inset-top));
+      left: 12px;
+      right: 12px;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      pointer-events: none;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      max-width: min(560px, calc(100vw - 120px));
+      padding: 10px 12px;
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 251, 0.88);
+      box-shadow: 0 12px 36px rgba(17, 43, 51, 0.16);
+      backdrop-filter: blur(18px);
+      pointer-events: auto;
+    }
+
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      flex: 0 0 34px;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      color: #fff;
+      background: conic-gradient(from 210deg, var(--sea), var(--green), var(--gold), var(--coral), var(--sea));
+      box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.34);
+      font-size: 17px;
+      font-weight: 800;
+    }
+
+    .brand p,
+    .brand h1 {
+      margin: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .brand p {
+      color: var(--sea-deep);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .brand h1 {
+      color: var(--ink);
+      font-size: 17px;
+      line-height: 1.25;
+      font-weight: 850;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: auto;
+    }
+
+    .icon-btn {
+      display: grid;
+      place-items: center;
+      width: 44px;
+      height: 44px;
+      border: 1px solid rgba(255, 255, 255, 0.65);
+      border-radius: 50%;
+      background: rgba(255, 255, 251, 0.9);
+      box-shadow: 0 12px 36px rgba(17, 43, 51, 0.16);
+      backdrop-filter: blur(18px);
+      font-size: 20px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 160ms ease, background 160ms ease, color 160ms ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .icon-btn:active {
+      transform: scale(0.96);
+    }
+
+    .icon-btn.active {
+      color: #fff;
+      background: var(--sea-deep);
+    }
+
+    .sheet {
+      position: fixed;
+      left: 10px;
+      right: 10px;
+      bottom: calc(10px + env(safe-area-inset-bottom));
+      z-index: 4;
+      display: flex;
+      flex-direction: column;
+      height: var(--sheet-height, min(78dvh, 700px));
+      max-height: calc(100dvh - 88px - env(safe-area-inset-top));
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      backdrop-filter: blur(22px);
+      transform: translateZ(0);
+      transition: height 220ms ease;
+      touch-action: none;
+    }
+
+    .sheet.compact {
+      height: min(46dvh, 420px);
+    }
+
+    .sheet.expanded {
+      height: calc(100dvh - 88px - env(safe-area-inset-top));
+    }
+
+    .sheet.dragging {
+      transition: none;
+    }
+
+    .grab {
+      display: grid;
+      place-items: center;
+      height: 24px;
+      flex: 0 0 24px;
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: none;
+    }
+
+    .grab:focus {
+      outline: none;
+    }
+
+    .grab:focus-visible::before {
+      background: rgba(15, 123, 131, 0.42);
+      box-shadow: 0 0 0 4px rgba(15, 123, 131, 0.12);
+    }
+
+    .grab::before {
+      content: "";
+      width: 44px;
+      height: 5px;
+      border-radius: 999px;
+      background: rgba(16, 36, 42, 0.24);
+    }
+
+    .sheet-body {
+      min-height: 0;
+      overflow: auto;
+      padding: 0 12px 14px;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      touch-action: pan-y;
+    }
+
+    .day-head {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: start;
+      padding: 2px 0 10px;
+    }
+
+    .day-head h2 {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.15;
+      font-weight: 900;
+      letter-spacing: 0;
+    }
+
+    .day-head p {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .day-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 58px;
+      height: 32px;
+      padding: 0 10px;
+      border-radius: 999px;
+      color: #fff;
+      background: var(--ink);
+      font-size: 13px;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .day-picker {
+      margin-bottom: 12px;
+    }
+
+    .day-select {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      width: 100%;
+      min-height: 46px;
+      padding: 8px 10px;
+      border: 1px solid rgba(15, 123, 131, 0.22);
+      border-radius: var(--radius);
+      background: #fff;
+      box-shadow: 0 8px 22px rgba(14, 43, 49, 0.08);
+      text-align: left;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .day-select span:first-child {
+      min-width: 76px;
+      color: var(--sea-deep);
+      font-size: 13px;
+      font-weight: 880;
+    }
+
+    .day-select strong {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 14px;
+      font-weight: 860;
+    }
+
+    .day-select .chevron {
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      color: #fff;
+      background: var(--sea-deep);
+      font-size: 15px;
+      font-weight: 900;
+      transition: transform 180ms ease;
+    }
+
+    .day-picker.open .chevron {
+      transform: rotate(180deg);
+    }
+
+    .day-strip {
+      display: flex;
+      gap: 8px;
+      max-height: 0;
+      margin: 0 -12px;
+      padding: 0 12px;
+      opacity: 0;
+      overflow-x: auto;
+      overflow-y: hidden;
+      pointer-events: none;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+      transition: max-height 200ms ease, opacity 160ms ease, padding 200ms ease, margin 200ms ease;
+    }
+
+    .day-picker.open .day-strip {
+      max-height: 62px;
+      margin: 8px -12px 0;
+      padding: 0 12px 2px;
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .day-strip::-webkit-scrollbar {
+      display: none;
+    }
+
+    .day-chip {
+      flex: 0 0 auto;
+      display: grid;
+      min-width: 70px;
+      min-height: 42px;
+      padding: 7px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      text-align: center;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform 160ms ease, border 160ms ease, background 160ms ease;
+    }
+
+    .day-chip:active {
+      transform: scale(0.97);
+    }
+
+    .day-chip.active {
+      color: #fff;
+      border-color: var(--sea-deep);
+      background: var(--sea-deep);
+    }
+
+    .day-chip strong {
+      display: block;
+      font-size: 13px;
+      line-height: 1.1;
+      font-weight: 850;
+    }
+
+    .day-chip span {
+      display: block;
+      margin-top: 3px;
+      font-size: 11px;
+      line-height: 1.1;
+      opacity: 0.78;
+    }
+
+    .hero {
+      position: relative;
+      margin: 0 0 12px;
+      overflow: hidden;
+      border-radius: var(--radius);
+      aspect-ratio: 16 / 9;
+      background: linear-gradient(135deg, rgba(15, 123, 131, 0.2), rgba(238, 111, 87, 0.22));
+    }
+
+    .hero img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+    }
+
+    .hero .caption {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 34px 12px 10px;
+      color: #fff;
+      background: linear-gradient(180deg, transparent, rgba(5, 20, 24, 0.72));
+      font-size: 12px;
+      font-weight: 720;
+      text-shadow: 0 1px 8px rgba(0, 0, 0, 0.35);
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .metric {
+      min-width: 0;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 760;
+    }
+
+    .metric strong {
+      display: block;
+      margin-top: 3px;
+      overflow-wrap: anywhere;
+      font-size: 14px;
+      line-height: 1.35;
+      font-weight: 840;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 16px 0 8px;
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 880;
+    }
+
+    .section-title:first-of-type {
+      margin-top: 10px;
+    }
+
+    .timeline {
+      display: grid;
+      gap: 8px;
+    }
+
+    .timeline-item {
+      display: grid;
+      grid-template-columns: 82px 1fr;
+      gap: 10px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+    }
+
+    .time {
+      color: var(--sea-deep);
+      font-size: 12px;
+      font-weight: 850;
+      line-height: 1.3;
+    }
+
+    .timeline-item h3 {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.32;
+      font-weight: 860;
+      overflow-wrap: anywhere;
+    }
+
+    .timeline-item p {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+
+    .stop-grid {
+      display: grid;
+      gap: 8px;
+    }
+
+    .stop-card {
+      display: grid;
+      grid-template-columns: 86px 1fr;
+      gap: 10px;
+      width: 100%;
+      min-height: 96px;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+      text-align: left;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform 160ms ease, border 160ms ease, box-shadow 160ms ease;
+    }
+
+    .stop-card:active {
+      transform: scale(0.99);
+    }
+
+    .stop-card.active {
+      border-color: rgba(15, 123, 131, 0.6);
+      box-shadow: 0 10px 26px rgba(15, 123, 131, 0.16);
+    }
+
+    .stop-card img {
+      width: 86px;
+      height: 80px;
+      border-radius: 6px;
+      object-fit: cover;
+      background: #d7e4e3;
+    }
+
+    .stop-card small {
+      color: var(--coral);
+      font-size: 11px;
+      font-weight: 840;
+    }
+
+    .stop-card strong {
+      display: block;
+      margin-top: 2px;
+      font-size: 14px;
+      line-height: 1.28;
+      font-weight: 880;
+      overflow-wrap: anywhere;
+    }
+
+    .stop-card p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .stay-box {
+      padding: 10px;
+      border: 1px solid rgba(59, 123, 94, 0.24);
+      border-radius: var(--radius);
+      background: rgba(246, 252, 247, 0.94);
+    }
+
+    .stay-box h3 {
+      margin: 0 0 5px;
+      font-size: 15px;
+      line-height: 1.3;
+      font-weight: 880;
+    }
+
+    .stay-box p {
+      margin: 4px 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+
+    .footer-note {
+      margin: 16px 0 4px;
+      color: rgba(16, 36, 42, 0.56);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .leaflet-control-attribution {
+      font-size: 10px;
+    }
+
+    .route-marker {
+      position: relative;
+      display: grid;
+      place-items: center;
+      width: 30px;
+      height: 30px;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      color: #fff;
+      background: var(--sea);
+      box-shadow: 0 8px 20px rgba(7, 27, 34, 0.22);
+      font-size: 11px;
+      font-weight: 900;
+    }
+
+    .route-marker::after {
+      content: "";
+      position: absolute;
+      inset: -7px;
+      border-radius: 50%;
+      border: 2px solid rgba(15, 123, 131, 0.18);
+    }
+
+    .route-marker.active {
+      background: var(--coral);
+      transform: scale(1.08);
+    }
+
+    .route-marker.stay {
+      background: var(--green);
+    }
+
+    .route-marker.airport {
+      background: var(--rose);
+    }
+
+    .route-marker.day-d3,
+    .route-marker.day-d4,
+    .route-marker.day-d5 {
+      background: #b36a2e;
+    }
+
+    .route-marker.day-d7,
+    .route-marker.day-d8,
+    .route-marker.day-d9,
+    .route-marker.day-d10 {
+      background: #286fa3;
+    }
+
+    .leaflet-popup-content-wrapper {
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 18px 46px rgba(10, 31, 38, 0.24);
+    }
+
+    .leaflet-popup-content {
+      width: 236px !important;
+      margin: 0;
+    }
+
+    .popup-card img {
+      width: 100%;
+      height: 118px;
+      display: block;
+      object-fit: cover;
+      background: #d7e4e3;
+    }
+
+    .popup-card div {
+      padding: 10px;
+    }
+
+    .popup-card small {
+      color: var(--coral);
+      font-size: 11px;
+      font-weight: 840;
+    }
+
+    .popup-card h3 {
+      margin: 3px 0 4px;
+      color: var(--ink);
+      font-size: 15px;
+      line-height: 1.25;
+    }
+
+    .popup-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    @media (max-width: 370px) {
+      .brand {
+        max-width: calc(100vw - 112px);
+        padding: 9px 10px;
+      }
+
+      .brand h1 {
+        font-size: 15px;
+      }
+
+      .timeline-item {
+        grid-template-columns: 70px 1fr;
+      }
+
+      .stop-card {
+        grid-template-columns: 76px 1fr;
+      }
+
+      .stop-card img {
+        width: 76px;
+      }
+    }
+
+    @media (min-width: 900px) {
+      .topbar {
+        right: 440px;
+      }
+
+      .sheet {
+        top: calc(12px + env(safe-area-inset-top));
+        right: 12px;
+        left: auto;
+        bottom: 12px;
+        width: 408px;
+        height: auto;
+        max-height: none;
+      }
+
+      .grab {
+        display: none;
+      }
+
+      .sheet-body {
+        padding-top: 14px;
+      }
+
+      .day-select {
+        display: none;
+      }
+
+      .day-strip {
+        max-height: none;
+        margin: 0 -12px 12px;
+        padding: 0 12px 2px;
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .brand {
+        max-width: 600px;
+      }
+
+      .hero {
+        aspect-ratio: 1.7;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <div id="map" aria-label="西澳自驾路线地图"></div>
+
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">W</div>
+        <div>
+          <p>West Coast of AUS</p>
+          <h1>西澳自驾路线图</h1>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn" id="fitRoute" type="button" aria-label="查看全程">⌖</button>
+        <button class="icon-btn active" id="toggleStays" type="button" aria-label="显示住宿">⌂</button>
+      </div>
+    </header>
+
+    <section class="sheet" id="sheet" aria-label="行程详情">
+      <button class="grab" id="toggleSheet" type="button" aria-label="展开或收起详情"></button>
+      <div class="sheet-body">
+        <div class="day-head">
+          <div>
+            <h2 id="dayTitle"></h2>
+            <p id="daySummary"></p>
+          </div>
+          <span class="day-pill" id="dayBadge"></span>
+        </div>
+
+        <div class="day-picker" id="dayPicker">
+          <button class="day-select" id="toggleDayPicker" type="button" aria-expanded="false" aria-controls="dayStrip">
+            <span id="currentDayLabel"></span>
+            <strong id="currentDayTitle"></strong>
+            <span class="chevron">⌄</span>
+          </button>
+          <nav class="day-strip" id="dayStrip" aria-label="选择日期"></nav>
+        </div>
+
+        <div class="section-title">当天行程</div>
+        <div class="timeline" id="timeline"></div>
+
+        <figure class="hero">
+          <img id="dayPhoto" alt="">
+          <figcaption class="caption" id="dayCaption"></figcaption>
+        </figure>
+
+        <div class="meta-grid">
+          <div class="metric">
+            <span>主题</span>
+            <strong id="dayTheme"></strong>
+          </div>
+          <div class="metric">
+            <span>驾驶</span>
+            <strong id="dayDrive"></strong>
+          </div>
+          <div class="metric">
+            <span>穿着</span>
+            <strong id="dayWear"></strong>
+          </div>
+          <div class="metric">
+            <span>住宿</span>
+            <strong id="dayStayName"></strong>
+          </div>
+        </div>
+
+        <div class="section-title">地点详情</div>
+        <div class="stop-grid" id="stopGrid"></div>
+
+        <div class="section-title">住宿信息</div>
+        <div class="stay-box" id="stayBox"></div>
+
+        <p class="footer-note">地图底图来自 Esri World Street Map 与 OpenStreetMap 贡献数据；景点照片使用 Wikimedia/Wikipedia 公开图片源。住宿地址按文档记录展示，坐标为城区或街道级近似点。</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const photos = {
+      perth: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Perth_CBD_skyline_from_State_War_Memorial_Lookout%2C_2023%2C_04_b.jpg/3840px-Perth_CBD_skyline_from_State_War_Memorial_Lookout%2C_2023%2C_04_b.jpg",
+      fremantle: "https://upload.wikimedia.org/wikipedia/commons/6/6d/Aerial_view_of_Fremantle.JPG",
+      rottnest: "https://upload.wikimedia.org/wikipedia/commons/2/27/Rottnest_Island.jpg",
+      lancelin: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Indian_Ocean_at_Lancelin.JPG/3840px-Indian_Ocean_at_Lancelin.JPG",
+      pinnacles: "https://upload.wikimedia.org/wikipedia/commons/8/80/Pinnacles_pano_2005-08-26.jpg",
+      geraldton: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/32/00_1761_Geraldton%2C_Western_Australia.jpg/3840px-00_1761_Geraldton%2C_Western_Australia.jpg",
+      kalbarri: "https://upload.wikimedia.org/wikipedia/commons/9/90/Kalbarri_NP_Coastal.jpg",
+      huttLagoon: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Hutt_Lagoon%2C_Western_Australia.jpg/3840px-Hutt_Lagoon%2C_Western_Australia.jpg",
+      dunsborough: "https://upload.wikimedia.org/wikipedia/commons/c/cf/OIC_dunsborough_town_beach.jpg",
+      capeNaturaliste: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/76/Cape_Naturaliste_in_2014.jpg/3840px-Cape_Naturaliste_in_2014.jpg",
+      busselton: "https://upload.wikimedia.org/wikipedia/commons/5/54/BusseltonJetty1_gobeirne.jpg",
+      margaretRiver: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/Bussell_Highway%2C_Margaret_River%2C_2015_%2805%29.JPG/3840px-Bussell_Highway%2C_Margaret_River%2C_2015_%2805%29.JPG",
+      capeLeeuwin: "https://upload.wikimedia.org/wikipedia/commons/c/c8/Cape_Leeuwin_From_North.jpg",
+      mandurah: "https://upload.wikimedia.org/wikipedia/commons/8/86/Mandurah_War_Memorial%2C_October_2021_01.jpg"
+    };
+
+    const stays = [
+      {
+        id: "stay-fremantle",
+        dates: "9/25-9/27",
+        name: "Fremantle / Leeming 民宿",
+        city: "Fremantle",
+        address: "27 Matthew Avenue, Leeming",
+        area: "Fremantle Station / B Shed / Esplanade Park",
+        price: "约 400 RMB/人/晚",
+        rooms: "4 个卧室，2 个卫生间；当前为可取消状态",
+        coords: [-32.080, 115.866],
+        photo: photos.fremantle
+      },
+      {
+        id: "stay-kalbarri",
+        dates: "9/27-9/30",
+        name: "Kalbarri Smith St 民宿",
+        city: "Kalbarri",
+        address: "Kalbarri Smith St",
+        area: "Foreshore / Chinaman's Beach / Grey Street",
+        price: "约 490 RMB/人/晚",
+        rooms: "4 个卧室，2 个卫生间",
+        coords: [-27.7105, 114.1652],
+        photo: photos.kalbarri
+      },
+      {
+        id: "stay-dunsborough",
+        dates: "9/30-10/5",
+        name: "Dunsborough / Yallingup 民宿",
+        city: "Dunsborough",
+        address: "30 Troon Loop, Dunsborough WA 6281",
+        area: "Dunsborough / Old Dunsborough / Quindalup / Yallingup",
+        price: "约 380 RMB/人/晚",
+        rooms: "4 个卧室，2 个卫生间",
+        coords: [-33.617, 115.096],
+        photo: photos.dunsborough
+      }
+    ];
+
+    const days = [
+      {
+        id: "d1",
+        label: "D1",
+        date: "9/25",
+        title: "抵达 Perth Airport",
+        summary: "入境取行李后前往第一晚民宿，今晚不安排景点。",
+        theme: "抵达珀斯后入住休整",
+        drive: "打车为主",
+        wear: "飞机长裤 + 薄外套",
+        stay: "stay-fremantle",
+        cover: photos.perth,
+        caption: "Perth skyline",
+        timeline: [
+          ["晚上", "抵达 Perth Airport，入境、取行李"],
+          ["落地后", "前往 Fremantle / Leeming 民宿"],
+          ["入住后", "整理行李、休息"]
+        ],
+        stops: [
+          stop("d1-airport", "晚上", "Perth Airport", [-31.9403, 115.9672], "入境、取行李，作为西澳环线起点。", photos.perth, "airport"),
+          stop("d1-stay", "入住后", "Fremantle / Leeming 民宿", [-32.080, 115.866], "第一段住宿，方便第二天前往 Fremantle 码头。", photos.fremantle, "stay")
+        ]
+      },
+      {
+        id: "d2",
+        label: "D2",
+        date: "9/26",
+        title: "Rottnest Island 一日",
+        summary: "早船上岛，骑行串联海湾，下午找 quokka 后回 Fremantle。",
+        theme: "海岛骑行 / quokka / 透明海湾",
+        drive: "步行、船、骑行",
+        wear: "短袖 + 防晒衣 + 好走鞋",
+        stay: "stay-fremantle",
+        cover: photos.rottnest,
+        caption: "Rottnest Island",
+        timeline: [
+          ["7:30-8:15", "前往 Fremantle 码头"],
+          ["8:30-9:00", "坐船去 Rottnest"],
+          ["9:30-10:00", "上岛租自行车/电助力车"],
+          ["10:00-12:00", "The Basin、Pinkys Beach、Geordie Bay"],
+          ["12:00-13:00", "午餐或自带简餐"],
+          ["13:00-15:30", "Little Salmon Bay、Parker Point、Henrietta Rocks"],
+          ["15:30-16:30", "找 quokka、回码头"],
+          ["16:30-17:30", "坐船回 Fremantle"]
+        ],
+        stops: [
+          stop("d2-fremantle", "7:30-8:15", "Fremantle B Shed 码头", [-32.0542, 115.7475], "Rottnest ferry 出发点，建议预留登船时间。", photos.fremantle),
+          stop("d2-rottnest", "9:00-10:00", "Rottnest Island Settlement", [-31.996, 115.541], "上岛租车，开始海岛环线。", photos.rottnest),
+          stop("d2-basin", "10:00-12:00", "The Basin / Pinkys Beach", [-31.989, 115.532], "水色清亮、礁石围合，适合轻松玩水和拍照。", photos.rottnest),
+          stop("d2-salmon", "13:00-15:30", "Little Salmon Bay", [-32.014, 115.522], "小而安静的海湾，适合浮潜和看浅水层次。", photos.rottnest),
+          stop("d2-parker", "13:00-15:30", "Parker Point / Henrietta Rocks", [-32.024, 115.544], "东南侧海岸线，礁石、沉船点和蓝绿色海面更有野性。", photos.rottnest),
+          stop("d2-quokka", "15:30-16:30", "Quokka 活动区", [-31.996, 115.540], "回码头前留时间找短尾矮袋鼠。", photos.rottnest)
+        ]
+      },
+      {
+        id: "d3",
+        label: "D3",
+        date: "9/27",
+        title: "Fremantle 到 Kalbarri",
+        summary: "从珀斯南侧一路北上，白沙丘、尖峰石阵和补给点串成第一段长途。",
+        theme: "白沙丘 / 尖峰石阵 / 北线进场",
+        drive: "约 6-7 小时纯驾驶",
+        wear: "长袖防晒 + 运动鞋",
+        stay: "stay-kalbarri",
+        cover: photos.pinnacles,
+        caption: "The Pinnacles",
+        timeline: [
+          ["06:30", "Fremantle 出发"],
+          ["08:30-10:00", "Lancelin Sand Dunes 白沙丘，滑沙/拍照"],
+          ["10:00-11:15", "Lancelin → Pinnacles Desert"],
+          ["11:15-12:45", "尖峰石阵 Pinnacles Desert"],
+          ["12:45-13:15", "Cervantes 简单午餐/加油/厕所"],
+          ["13:15-15:45", "Cervantes → Geraldton 方向"],
+          ["15:45-16:15", "Geraldton / Northampton 补给、加油、咖啡"],
+          ["16:15-18:00", "继续开往 Kalbarri"]
+        ],
+        stops: [
+          stop("d3-fremantle", "06:30", "Fremantle / Leeming", [-32.080, 115.866], "退房后进入北线长途。", photos.fremantle, "stay"),
+          stop("d3-lancelin", "08:30-10:00", "Lancelin Sand Dunes", [-31.0207, 115.3253], "白色沙丘和蓝天对比强烈，可以滑沙，也适合人像。", photos.lancelin),
+          stop("d3-pinnacles", "11:15-12:45", "Pinnacles Desert", [-30.6058, 115.1575], "黄色沙漠中的石灰岩柱，西澳北线代表性地貌。", photos.pinnacles),
+          stop("d3-cervantes", "12:45-13:15", "Cervantes", [-30.5005, 115.0679], "简餐、加油和厕所点。", photos.pinnacles),
+          stop("d3-geraldton", "15:45-16:15", "Geraldton / Northampton", [-28.7744, 114.6089], "北上补给点，适合咖啡和加油。", photos.geraldton),
+          stop("d3-kalbarri", "18:00", "Kalbarri 民宿", [-27.7105, 114.1652], "入住北线基地，后两天以 Kalbarri 为中心。", photos.kalbarri, "stay")
+        ]
+      },
+      {
+        id: "d4",
+        label: "D4",
+        date: "9/28",
+        title: "Hutt Lagoon 与 Kalbarri 海岸",
+        summary: "上午追粉湖颜色，下午回 Kalbarri 海岸悬崖和日落。",
+        theme: "粉湖 / 红崖海岸 / 日落",
+        drive: "约 2.5-3.5 小时",
+        wear: "防晒衣 + 帽子 + 运动鞋",
+        stay: "stay-kalbarri",
+        cover: photos.huttLagoon,
+        caption: "Hutt Lagoon",
+        timeline: [
+          ["08:30", "Kalbarri 出发"],
+          ["09:20-11:00", "Hutt Lagoon / Port Gregory 粉湖"],
+          ["11:00-12:00", "返回 Kalbarri"],
+          ["12:00-13:30", "Kalbarri 镇上午餐、休息"],
+          ["14:00-17:30", "Kalbarri 海岸段：Red Bluff、Pot Alley、Island Rock、Natural Bridge"],
+          ["17:30-18:20", "Red Bluff 或 Pot Alley 看日落"]
+        ],
+        stops: [
+          stop("d4-kalbarri", "08:30", "Kalbarri", [-27.7105, 114.1652], "从民宿出发，往 Port Gregory 方向看粉湖。", photos.kalbarri, "stay"),
+          stop("d4-hutt", "09:20-11:00", "Hutt Lagoon / Port Gregory", [-28.1333, 114.2167], "西澳经典粉湖，颜色受阳光、盐度和云层影响。", photos.huttLagoon),
+          stop("d4-redbluff", "14:00-17:30", "Red Bluff", [-27.746, 114.142], "红色海岸悬崖和蓝色印度洋撞色，很有西澳味道。", photos.kalbarri),
+          stop("d4-pot", "14:00-17:30", "Pot Alley / Island Rock", [-27.787, 114.144], "海岸步道点位密集，各点之间 5-15 分钟车程。", photos.kalbarri),
+          stop("d4-natural", "17:30-18:20", "Natural Bridge 日落", [-27.752, 114.144], "风蚀海岸与拱形岩层，适合傍晚收尾。", photos.kalbarri)
+        ]
+      },
+      {
+        id: "d5",
+        label: "D5",
+        date: "9/29",
+        title: "Kalbarri 国家公园内陆峡谷",
+        summary: "自然之窗、Skywalk 和 Z Bend 看 Murchison River 红岩峡谷。",
+        theme: "红岩峡谷 / 河谷 / 短徒步",
+        drive: "约 2-3 小时",
+        wear: "速干薄长袖 + 每人 1.5-2L 水",
+        stay: "stay-kalbarri",
+        cover: photos.kalbarri,
+        caption: "Kalbarri National Park",
+        timeline: [
+          ["07:00", "从 Kalbarri 民宿出发"],
+          ["07:40-09:00", "Nature's Window 自然之窗"],
+          ["09:00-10:00", "The Loop 入口附近短步道，不建议完整走 8km 大环线"],
+          ["10:15-11:15", "Kalbarri Skywalk"],
+          ["11:30-13:00", "Z Bend Lookout / 视体力走短线"],
+          ["13:00-14:00", "回 Kalbarri 镇上午餐"],
+          ["14:00-16:30", "休息、洗衣、补给，或 Chinaman's Beach / Blue Holes 散步"],
+          ["17:00-18:20", "Meanarra Hill Lookout 或海边看日落"]
+        ],
+        stops: [
+          stop("d5-nature", "07:40-09:00", "Nature's Window", [-27.559, 114.449], "天然岩石窗口，背后是 Murchison River 峡谷。", photos.kalbarri),
+          stop("d5-skywalk", "10:15-11:15", "Kalbarri Skywalk", [-27.592, 114.495], "悬挑观景平台，俯瞰红色峡谷和河道。", photos.kalbarri),
+          stop("d5-zbend", "11:30-13:00", "Z Bend Lookout", [-27.632, 114.474], "峡谷线条更深、更有力量感，适合看地貌层次。", photos.kalbarri),
+          stop("d5-beach", "14:00-16:30", "Chinaman's Beach / Blue Holes", [-27.710, 114.160], "下午降强度，回镇上补给或海边轻松散步。", photos.kalbarri),
+          stop("d5-meanarra", "17:00-18:20", "Meanarra Hill Lookout", [-27.718, 114.214], "Kalbarri 周边日落点，可俯瞰城镇和海岸。", photos.kalbarri)
+        ]
+      },
+      {
+        id: "d6",
+        label: "D6",
+        date: "9/30",
+        title: "Kalbarri 南下到 Dunsborough",
+        summary: "全程最长驾驶日，咖啡、加油、厕所和午餐点按节奏拆开。",
+        theme: "长途转场 / 北线到南线",
+        drive: "约 7.5-8.5 小时纯驾驶",
+        wear: "舒适长裤 + 薄外套",
+        stay: "stay-dunsborough",
+        cover: photos.geraldton,
+        caption: "Geraldton stopover",
+        timeline: [
+          ["06:30", "Kalbarri 出发，车上备早餐/咖啡"],
+          ["08:00-08:20", "Northampton 短停，加油/厕所"],
+          ["09:15-09:45", "Geraldton 短停，咖啡、补给"],
+          ["11:30-12:30", "Dongara / Port Denison 午餐"],
+          ["14:30-15:00", "Perth 北部或服务区短停"],
+          ["16:30-17:00", "Bunbury / Busselton 方向短停"],
+          ["18:00-19:00", "抵达 Dunsborough，入住"],
+          ["晚上", "镇上晚餐，早点睡"]
+        ],
+        stops: [
+          stop("d6-kalbarri", "06:30", "Kalbarri", [-27.7105, 114.1652], "早出发，把最长驾驶日拆成多段。", photos.kalbarri, "stay"),
+          stop("d6-northampton", "08:00-08:20", "Northampton", [-28.350, 114.632], "短停、加油、厕所。", photos.geraldton),
+          stop("d6-geraldton", "09:15-09:45", "Geraldton", [-28.7744, 114.6089], "咖啡和补给点。", photos.geraldton),
+          stop("d6-dongara", "11:30-12:30", "Dongara / Port Denison", [-29.252, 114.932], "午餐休息，避免连续驾驶疲劳。", photos.geraldton),
+          stop("d6-busselton", "16:30-17:00", "Bunbury / Busselton 方向", [-33.6369, 115.3401], "进入西南海岸段前最后一次短停。", photos.busselton),
+          stop("d6-dunsborough", "18:00-19:00", "Dunsborough 民宿", [-33.617, 115.096], "南线基地，后续几天围绕 Dunsborough / Margaret River。", photos.dunsborough, "stay")
+        ]
+      },
+      {
+        id: "d7",
+        label: "D7",
+        date: "10/1",
+        title: "Dunsborough 海湾与灯塔",
+        summary: "慢起床后走 Meelup、Cape Naturaliste 和 Sugarloaf Rock 日落。",
+        theme: "温柔海湾 / 灯塔 / 日落岩石",
+        drive: "约 1-1.5 小时",
+        wear: "薄长袖，傍晚防风外套",
+        stay: "stay-dunsborough",
+        cover: photos.capeNaturaliste,
+        caption: "Cape Naturaliste",
+        timeline: [
+          ["09:30", "慢起床，Dunsborough 镇上早餐/咖啡"],
+          ["10:30-12:00", "Meelup Beach / Castle Rock"],
+          ["12:00-13:30", "Eagle Bay 或 Dunsborough 午餐"],
+          ["14:00-15:30", "Cape Naturaliste Lighthouse"],
+          ["15:30-16:30", "Bunker Bay / Shelley Cove 轻松散步"],
+          ["17:00-18:20", "Sugarloaf Rock 看日落"],
+          ["晚上", "回 Dunsborough 晚餐"]
+        ],
+        stops: [
+          stop("d7-dunsborough", "09:30", "Dunsborough", [-33.6167, 115.100], "南线小镇早餐和咖啡。", photos.dunsborough, "stay"),
+          stop("d7-meelup", "10:30-12:00", "Meelup Beach / Castle Rock", [-33.553, 115.071], "水色清亮、节奏温柔，Castle Rock 岩石和海湾组合很出片。", photos.dunsborough),
+          stop("d7-cape", "14:00-15:30", "Cape Naturaliste Lighthouse", [-33.5303, 115.0039], "南线经典灯塔，周边能看海岸和迁徙季鲸鱼。", photos.capeNaturaliste),
+          stop("d7-bunker", "15:30-16:30", "Bunker Bay / Shelley Cove", [-33.546, 115.033], "下午轻松散步，风景密度高。", photos.capeNaturaliste),
+          stop("d7-sugarloaf", "17:00-18:20", "Sugarloaf Rock", [-33.533, 115.000], "Dunsborough 附近代表性日落点，岩石从海里拔起。", photos.capeNaturaliste)
+        ]
+      },
+      {
+        id: "d8",
+        label: "D8",
+        date: "10/2",
+        title: "追鲸与 Yallingup 海岸",
+        summary: "上午 Dunsborough / Busselton 一带追鲸，下午走冲浪海岸和 Canal Rocks。",
+        theme: "追鲸 / 冲浪海岸 / 海水岩缝",
+        drive: "约 1.5-2.5 小时",
+        wear: "船上长袖 + 厚一点防风外套",
+        stay: "stay-dunsborough",
+        cover: photos.dunsborough,
+        caption: "Dunsborough coast",
+        timeline: [
+          ["07:30-08:00", "简单早餐，吃清淡一点"],
+          ["08:30-12:00", "Dunsborough / Busselton 一带追鲸团"],
+          ["12:00-13:30", "回 Dunsborough 午餐，休息"],
+          ["14:00-15:00", "Yallingup Beach / Smiths Beach"],
+          ["15:15-16:30", "Canal Rocks"],
+          ["16:45-17:30", "Injidup Natural Spa 观景"],
+          ["17:30-18:20", "Canal Rocks 或 Yallingup 看日落"],
+          ["晚上", "回 Dunsborough"]
+        ],
+        stops: [
+          stop("d8-whale", "08:30-12:00", "Dunsborough / Busselton 追鲸团", [-33.6167, 115.100], "10 月初常见座头鲸迁徙，这一带海湾体感通常更温和。", photos.dunsborough),
+          stop("d8-yallingup", "14:00-15:00", "Yallingup Beach / Smiths Beach", [-33.646, 115.033], "冲浪海岸线，浪感明显，和 Meelup 的温柔海湾不同。", photos.capeNaturaliste),
+          stop("d8-canal", "15:15-16:30", "Canal Rocks", [-33.676, 114.987], "海水从岩石缝隙间冲进来，非常有动态。", photos.capeNaturaliste),
+          stop("d8-injidup", "16:45-17:30", "Injidup Natural Spa", [-33.687, 114.987], "天然海水池，浪大时危险，建议以观看拍照为主。", photos.capeNaturaliste),
+          stop("d8-sunset", "17:30-18:20", "Canal Rocks / Yallingup 日落", [-33.676, 114.987], "海岸线日落机位，按当天风浪选择。", photos.capeNaturaliste)
+        ]
+      },
+      {
+        id: "d9",
+        label: "D9",
+        date: "10/3",
+        title: "Boranup、洞穴与 Cape Leeuwin",
+        summary: "森林、洞穴、澳洲西南角灯塔和 Hamelin Bay 串成南线纵深日。",
+        theme: "高大森林 / 洞穴 / 两洋交汇",
+        drive: "约 4 小时",
+        wear: "长袖 + 薄外套，洞穴和海边偏凉",
+        stay: "stay-dunsborough",
+        cover: photos.capeLeeuwin,
+        caption: "Cape Leeuwin",
+        timeline: [
+          ["08:00", "Dunsborough 出发"],
+          ["09:00-09:45", "Boranup Karri Forest"],
+          ["10:15-11:45", "Jewel Cave 或 Mammoth Cave"],
+          ["12:15-13:30", "Augusta 午餐"],
+          ["13:45-14:45", "Cape Leeuwin Lighthouse"],
+          ["15:15-16:15", "Hamelin Bay 看野生鳐鱼"],
+          ["16:15-18:00", "返程，可在 Margaret River 镇上短停"],
+          ["晚上", "回 Dunsborough"]
+        ],
+        stops: [
+          stop("d9-boranup", "09:00-09:45", "Boranup Karri Forest", [-34.105, 115.055], "高大的 karri 树林，和西澳北线红土地完全不同。", photos.margaretRiver),
+          stop("d9-cave", "10:15-11:45", "Jewel Cave / Mammoth Cave", [-34.284, 115.096], "Jewel Cave 更精致震撼；Mammoth Cave 更自由轻松。", photos.capeLeeuwin),
+          stop("d9-augusta", "12:15-13:30", "Augusta", [-34.315, 115.159], "灯塔前午餐补给点。", photos.capeLeeuwin),
+          stop("d9-leeuwin", "13:45-14:45", "Cape Leeuwin Lighthouse", [-34.3742, 115.1358], "印度洋和南大洋交汇处，风很大但地理意义很强。", photos.capeLeeuwin),
+          stop("d9-hamelin", "15:15-16:15", "Hamelin Bay", [-34.228, 115.040], "有机会看到野生鳐鱼靠近海岸，但不保证每天都有。", photos.capeLeeuwin)
+        ]
+      },
+      {
+        id: "d10",
+        label: "D10",
+        date: "10/4",
+        title: "Busselton Jetty 与酒庄慢游",
+        summary: "机动日，给追鲸天气和体力留余地，适合安排一顿正式酒庄午餐。",
+        theme: "酒庄午餐 / Margaret River 慢游",
+        drive: "约 1.5-3 小时",
+        wear: "轻松长袖 + 外套",
+        stay: "stay-dunsborough",
+        cover: photos.busselton,
+        caption: "Busselton Jetty",
+        timeline: [
+          ["09:00", "Dunsborough 出发"],
+          ["09:30-12:00", "Busselton Jetty"],
+          ["12:30-14:30", "酒庄午餐：Vasse Felix / Leeuwin Estate / Wise Wine 任选"],
+          ["15:00-16:30", "Margaret River Chocolate Company / Providore / 咖啡短停"],
+          ["17:00-18:20", "Surfers Point / Gnarabup Beach 或 Yallingup 日落"],
+          ["晚上", "回 Dunsborough，整理行李"]
+        ],
+        stops: [
+          stop("d10-busselton", "09:30-12:00", "Busselton Jetty", [-33.6369, 115.3401], "长栈桥、小火车和水下观察站，可按体力和预约安排。", photos.busselton),
+          stop("d10-winery", "12:30-14:30", "Vasse Felix / Leeuwin Estate / Wise Wine", [-33.796, 115.037], "适合安排正式午餐；司机不要喝酒。", photos.margaretRiver),
+          stop("d10-chocolate", "15:00-16:30", "Margaret River Chocolate Company / Providore", [-33.790, 115.103], "下午咖啡和甜点短停。", photos.margaretRiver),
+          stop("d10-surfers", "17:00-18:20", "Surfers Point / Gnarabup Beach", [-33.978, 114.993], "可看冲浪海岸日落，也可回 Yallingup。", photos.margaretRiver),
+          stop("d10-dunsborough", "晚上", "Dunsborough", [-33.617, 115.096], "回民宿整理行李。", photos.dunsborough, "stay")
+        ]
+      },
+      {
+        id: "d11",
+        label: "D11",
+        date: "10/5",
+        title: "Mandurah 收尾到 Perth Airport",
+        summary: "退房后北上，经 Lake Clifton 和 Mandurah，晚上还车去机场。",
+        theme: "返程 / 古老叠层石 / 海豚运河",
+        drive: "Dunsborough → Perth 约 3.5-4 小时",
+        wear: "舒适长途装 + 薄外套",
+        stay: "stay-dunsborough",
+        cover: photos.mandurah,
+        caption: "Mandurah",
+        timeline: [
+          ["08:30-09:00", "Dunsborough 退房，行李装车"],
+          ["09:00-11:00", "Dunsborough → Lake Clifton / Mandurah 方向"],
+          ["11:00-11:40", "Lake Clifton Thrombolites，看古老叠层石/湖岸步道"],
+          ["12:10-13:00", "抵达 Mandurah，午餐"],
+          ["13:30-15:00", "Mandurah Dolphin Cruise / canals cruise"],
+          ["15:00-16:30", "Mandurah Foreshore、Ocean Marina、Dolphin Quay 散步喝咖啡"],
+          ["16:30-17:30", "轻松晚餐或开往 Perth/Fremantle 吃晚餐"],
+          ["18:00-20:00", "Perth/Fremantle/Cottesloe 最后一餐、加油"],
+          ["20:00-21:00", "还车、整理行李"],
+          ["21:00-21:30", "抵达 Perth Airport"],
+          ["10/6 00:30", "陆续开始起飞"]
+        ],
+        stops: [
+          stop("d11-dunsborough", "08:30-09:00", "Dunsborough 退房", [-33.617, 115.096], "行李装车，开始北上返程。", photos.dunsborough, "stay"),
+          stop("d11-lake", "11:00-11:40", "Lake Clifton Thrombolites", [-32.780, 115.664], "古老叠层石和湖岸步道，适合短停。", photos.mandurah),
+          stop("d11-mandurah", "12:10-15:00", "Mandurah Dolphin Cruise", [-32.5289, 115.7231], "重点看海豚和运河水景。", photos.mandurah),
+          stop("d11-foreshore", "15:00-16:30", "Mandurah Foreshore / Dolphin Quay", [-32.526, 115.716], "散步、咖啡和最后的轻松海港时间。", photos.mandurah),
+          stop("d11-cottesloe", "18:00-20:00", "Perth / Fremantle / Cottesloe", [-31.995, 115.752], "最后一餐、加油，也适合最后看一眼珀斯海岸。", photos.perth),
+          stop("d11-airport", "21:00-21:30", "Perth Airport", [-31.9403, 115.9672], "还车后抵达机场，等待 10/6 凌晨航班。", photos.perth, "airport")
+        ]
+      }
+    ];
+
+    function stop(id, time, name, coords, feature, photo, kind = "spot") {
+      return { id, time, name, coords, feature, photo, kind };
+    }
+
+    const stayById = Object.fromEntries(stays.map((stay) => [stay.id, stay]));
+    const allRoutePoints = days.flatMap((day) => day.stops.map((item) => item.coords));
+    const map = L.map("map", {
+      zoomControl: false,
+      tap: true,
+      preferCanvas: true,
+      inertia: true
+    });
+
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 19,
+      attribution: "Tiles &copy; Esri; data &copy; OpenStreetMap contributors"
+    }).addTo(map);
+    L.control.zoom({ position: "bottomleft" }).addTo(map);
+
+    const mainRoute = L.polyline(allRoutePoints, {
+      color: "#0a4f58",
+      weight: 3,
+      opacity: 0.58,
+      dashArray: "7 9",
+      lineCap: "round"
+    }).addTo(map);
+
+    const dayRoute = L.polyline([], {
+      color: "#ee6f57",
+      weight: 5,
+      opacity: 0.92,
+      lineCap: "round"
+    }).addTo(map);
+
+    const markerLayer = L.layerGroup().addTo(map);
+    const stayLayer = L.layerGroup().addTo(map);
+    const markerRefs = new Map();
+    let activeDayIndex = 0;
+    let activeStopId = null;
+    let staysVisible = true;
+    let dayPickerOpen = false;
+
+    function createIcon(day, kind, active = false) {
+      const symbol = kind === "stay" ? "⌂" : kind === "airport" ? "✈" : day.replace("d", "");
+      return L.divIcon({
+        className: "",
+        html: `<div class="route-marker day-${day} ${kind} ${active ? "active" : ""}">${symbol}</div>`,
+        iconSize: [30, 30],
+        iconAnchor: [15, 15],
+        popupAnchor: [0, -16]
+      });
+    }
+
+    function popupHtml(item) {
+      return `
+        <article class="popup-card">
+          <img src="${item.photo}" alt="${escapeHtml(item.name)}">
+          <div>
+            <small>${escapeHtml(item.time)}</small>
+            <h3>${escapeHtml(item.name)}</h3>
+            <p>${escapeHtml(item.feature)}</p>
+          </div>
+        </article>
+      `;
+    }
+
+    days.forEach((day, dayIndex) => {
+      day.stops.forEach((item) => {
+        const marker = L.marker(item.coords, {
+          icon: createIcon(day.id, item.kind),
+          title: item.name
+        }).addTo(markerLayer);
+        marker.bindPopup(popupHtml(item), { closeButton: false, maxWidth: 260 });
+        marker.on("click", () => selectStop(dayIndex, item.id));
+        markerRefs.set(item.id, marker);
+      });
+    });
+
+    stays.forEach((stay) => {
+      const marker = L.marker(stay.coords, {
+        icon: L.divIcon({
+          className: "",
+          html: `<div class="route-marker stay">⌂</div>`,
+          iconSize: [30, 30],
+          iconAnchor: [15, 15],
+          popupAnchor: [0, -16]
+        }),
+        title: stay.name
+      }).addTo(stayLayer);
+      marker.bindPopup(`
+        <article class="popup-card">
+          <img src="${stay.photo}" alt="${escapeHtml(stay.name)}">
+          <div>
+            <small>${escapeHtml(stay.dates)}</small>
+            <h3>${escapeHtml(stay.name)}</h3>
+            <p>${escapeHtml(stay.address)} · ${escapeHtml(stay.price)}</p>
+          </div>
+        </article>
+      `, { closeButton: false, maxWidth: 260 });
+    });
+
+    function renderDayStrip() {
+      const strip = document.getElementById("dayStrip");
+      const picker = document.getElementById("dayPicker");
+      const toggle = document.getElementById("toggleDayPicker");
+      const currentDay = days[activeDayIndex];
+      document.getElementById("currentDayLabel").textContent = `${currentDay.label} ${currentDay.date}`;
+      document.getElementById("currentDayTitle").textContent = currentDay.title;
+      picker.classList.toggle("open", dayPickerOpen);
+      toggle.setAttribute("aria-expanded", String(dayPickerOpen));
+      strip.innerHTML = days.map((day, index) => `
+        <button class="day-chip ${index === activeDayIndex ? "active" : ""}" type="button" data-index="${index}">
+          <strong>${day.label}</strong>
+          <span>${day.date}</span>
+        </button>
+      `).join("");
+      strip.querySelectorAll("button").forEach((button) => {
+        button.addEventListener("click", () => selectDay(Number(button.dataset.index), true));
+      });
+      const activeChip = strip.querySelector(".day-chip.active");
+      if (activeChip) {
+        activeChip.scrollIntoView({ block: "nearest", inline: "center" });
+      }
+    }
+
+    function renderDay() {
+      const day = days[activeDayIndex];
+      const stay = stayById[day.stay];
+      const stop = day.stops.find((item) => item.id === activeStopId) || day.stops[0];
+
+      document.getElementById("dayTitle").textContent = day.title;
+      document.getElementById("daySummary").textContent = day.summary;
+      document.getElementById("dayBadge").textContent = `${day.label} ${day.date}`;
+      document.getElementById("dayPhoto").src = day.cover;
+      document.getElementById("dayPhoto").alt = day.caption;
+      document.getElementById("dayCaption").textContent = day.caption;
+      document.getElementById("dayTheme").textContent = day.theme;
+      document.getElementById("dayDrive").textContent = day.drive;
+      document.getElementById("dayWear").textContent = day.wear;
+      document.getElementById("dayStayName").textContent = stay.name;
+
+      document.getElementById("timeline").innerHTML = day.timeline.map(([time, text]) => `
+        <article class="timeline-item">
+          <div class="time">${escapeHtml(time)}</div>
+          <div>
+            <h3>${escapeHtml(text)}</h3>
+          </div>
+        </article>
+      `).join("");
+
+      document.getElementById("stopGrid").innerHTML = day.stops.map((item) => `
+        <button class="stop-card ${item.id === stop.id ? "active" : ""}" type="button" data-id="${item.id}">
+          <img src="${item.photo}" alt="${escapeHtml(item.name)}">
+          <div>
+            <small>${escapeHtml(item.time)}</small>
+            <strong>${escapeHtml(item.name)}</strong>
+            <p>${escapeHtml(item.feature)}</p>
+          </div>
+        </button>
+      `).join("");
+      document.getElementById("stopGrid").querySelectorAll("button").forEach((button) => {
+        button.addEventListener("click", () => focusStop(button.dataset.id));
+      });
+
+      document.getElementById("stayBox").innerHTML = `
+        <h3>${escapeHtml(stay.name)}</h3>
+        <p><strong>${escapeHtml(stay.dates)}</strong> · ${escapeHtml(stay.city)}</p>
+        <p>${escapeHtml(stay.address)}</p>
+        <p>建议区域：${escapeHtml(stay.area)}</p>
+        <p>${escapeHtml(stay.price)} · ${escapeHtml(stay.rooms)}</p>
+      `;
+
+      renderDayStrip();
+      updateMapForDay(stop.id);
+    }
+
+    function selectDay(index, fit = false) {
+      activeDayIndex = index;
+      activeStopId = days[index].stops[0].id;
+      dayPickerOpen = false;
+      renderDay();
+      scrollSheetTop();
+      if (fit) {
+        fitDay(index);
+      }
+    }
+
+    function selectStop(dayIndex, stopId) {
+      activeDayIndex = dayIndex;
+      activeStopId = stopId;
+      renderDay();
+      const marker = markerRefs.get(stopId);
+      if (marker) {
+        marker.openPopup();
+      }
+    }
+
+    function focusStop(stopId) {
+      activeStopId = stopId;
+      renderDay();
+      const marker = markerRefs.get(stopId);
+      if (marker) {
+        map.flyTo(marker.getLatLng(), Math.max(map.getZoom(), 10), {
+          duration: 0.65,
+          easeLinearity: 0.2
+        });
+        marker.openPopup();
+      }
+    }
+
+    function updateMapForDay(stopId) {
+      const day = days[activeDayIndex];
+      dayRoute.setLatLngs(day.stops.map((item) => item.coords));
+      markerRefs.forEach((marker, id) => {
+        const markerDay = days.find((candidate) => candidate.stops.some((item) => item.id === id));
+        const item = markerDay.stops.find((entry) => entry.id === id);
+        const isActive = id === stopId;
+        marker.setIcon(createIcon(markerDay.id, item.kind, isActive));
+      });
+    }
+
+    function fitDay(index) {
+      const bounds = L.latLngBounds(days[index].stops.map((item) => item.coords));
+      map.fitBounds(bounds.pad(0.2), {
+        animate: true,
+        duration: 0.65,
+        paddingTopLeft: [24, 92],
+        paddingBottomRight: window.innerWidth >= 900 ? [440, 24] : [24, 360]
+      });
+    }
+
+    function fitAll() {
+      map.fitBounds(mainRoute.getBounds().pad(0.08), {
+        animate: true,
+        duration: 0.8,
+        paddingTopLeft: [24, 92],
+        paddingBottomRight: window.innerWidth >= 900 ? [440, 24] : [24, 330]
+      });
+    }
+
+    function scrollSheetTop() {
+      const body = document.querySelector(".sheet-body");
+      if (body) {
+        body.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    document.getElementById("fitRoute").addEventListener("click", fitAll);
+    document.getElementById("toggleStays").addEventListener("click", (event) => {
+      staysVisible = !staysVisible;
+      event.currentTarget.classList.toggle("active", staysVisible);
+      if (staysVisible) {
+        stayLayer.addTo(map);
+      } else {
+        stayLayer.remove();
+      }
+    });
+    let suppressGrabClick = false;
+    document.getElementById("toggleSheet").addEventListener("click", () => {
+      if (suppressGrabClick) {
+        suppressGrabClick = false;
+        return;
+      }
+      const sheet = document.getElementById("sheet");
+      if (sheet.classList.contains("expanded")) {
+        setSheetSnap("mid");
+      } else {
+        setSheetSnap("expanded");
+      }
+      setTimeout(() => map.invalidateSize({ animate: true }), 220);
+    });
+    document.getElementById("toggleDayPicker").addEventListener("click", () => {
+      dayPickerOpen = !dayPickerOpen;
+      renderDayStrip();
+    });
+
+    const sheet = document.getElementById("sheet");
+    const grab = document.getElementById("toggleSheet");
+    let dragState = null;
+
+    grab.addEventListener("pointerdown", (event) => {
+      if (window.innerWidth >= 900) return;
+      dragState = {
+        startY: event.clientY,
+        startHeight: sheet.getBoundingClientRect().height,
+        moved: false
+      };
+      sheet.classList.add("dragging");
+      grab.setPointerCapture(event.pointerId);
+    });
+
+    grab.addEventListener("pointermove", (event) => {
+      if (!dragState) return;
+      const delta = dragState.startY - event.clientY;
+      if (Math.abs(delta) > 4) dragState.moved = true;
+      const nextHeight = clampSheetHeight(dragState.startHeight + delta);
+      sheet.classList.remove("compact", "expanded");
+      sheet.style.setProperty("--sheet-height", `${nextHeight}px`);
+    });
+
+    grab.addEventListener("pointerup", (event) => {
+      if (!dragState) return;
+      const currentHeight = sheet.getBoundingClientRect().height;
+      const maxHeight = getSheetMaxHeight();
+      const wasMoved = dragState.moved;
+      dragState = null;
+      sheet.classList.remove("dragging");
+      if (grab.hasPointerCapture(event.pointerId)) {
+        grab.releasePointerCapture(event.pointerId);
+      }
+      if (!wasMoved) return;
+      suppressGrabClick = true;
+      if (currentHeight > maxHeight * 0.78) {
+        setSheetSnap("expanded");
+      } else if (currentHeight < maxHeight * 0.48) {
+        setSheetSnap("compact");
+      } else {
+        setSheetSnap("mid");
+      }
+    });
+
+    grab.addEventListener("pointercancel", () => {
+      dragState = null;
+      sheet.classList.remove("dragging");
+    });
+
+    window.addEventListener("resize", () => {
+      map.invalidateSize();
+    });
+
+    function setSheetSnap(mode) {
+      sheet.style.removeProperty("--sheet-height");
+      sheet.classList.toggle("compact", mode === "compact");
+      sheet.classList.toggle("expanded", mode === "expanded");
+      setTimeout(() => map.invalidateSize({ animate: true }), 220);
+    }
+
+    function clampSheetHeight(height) {
+      const maxHeight = getSheetMaxHeight();
+      const minHeight = Math.min(360, Math.max(280, window.innerHeight * 0.38));
+      return Math.min(maxHeight, Math.max(minHeight, height));
+    }
+
+    function getSheetMaxHeight() {
+      return Math.max(360, window.innerHeight - 88);
+    }
+
+    renderDayStrip();
+    selectDay(0, false);
+    fitAll();
+  </script>
+</body>
+</html>

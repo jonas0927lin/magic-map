@@ -1,0 +1,19 @@
+{
+  "name": "West Coast of AUS Route Map",
+  "short_name": "Magic Map",
+  "description": "西澳自驾路线离线攻略地图",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#dfe8e7",
+  "theme_color": "#10242a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "./assets/icons/magic-map.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

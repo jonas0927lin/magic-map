@@ -1,5 +1,5 @@
-const APP_CACHE = "magic-map-app-v1";
-const RUNTIME_CACHE = "magic-map-runtime-v1";
+const APP_CACHE = "magic-map-app-v2";
+const RUNTIME_CACHE = "magic-map-runtime-v2";
 
 const APP_SHELL = [
   "./",

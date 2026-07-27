@@ -935,15 +935,27 @@
 
     const stays = [
       {
-        id: "stay-fremantle",
-        dates: "9/25-9/27",
-        name: "Fremantle / Leeming 民宿",
-        city: "Fremantle",
-        address: "27 Matthew Avenue, Leeming",
-        area: "Fremantle Station / B Shed / Esplanade Park",
+        id: "stay-perth-herdsman",
+        dates: "9/25-9/26",
+        name: "Perth / Herdsman 民宿",
+        city: "Perth",
+        address: "Beverley Court, 46 Herdsman Parade, Wembley WA 6014",
+        area: "Herdsman Lake / Wembley",
+        price: "约 300 RMB/人/晚",
+        rooms: "2 个卧室；以订单为准",
+        coords: [-31.928412, 115.815388],
+        photo: photos.perth
+      },
+      {
+        id: "stay-mosman-park",
+        dates: "9/26-9/27",
+        name: "Mosman Park 民宿",
+        city: "Mosman Park",
+        address: "666 Stirling Highway, Mosman Park WA 6012",
+        area: "Mosman Park / Fremantle 北侧",
         price: "约 400 RMB/人/晚",
-        rooms: "4 个卧室，2 个卫生间；当前为可取消状态",
-        coords: [-32.080, 115.866],
+        rooms: "2 个卫生间；以订单为准",
+        coords: [-32.009, 115.763],
         photo: photos.fremantle
       },
       {
@@ -978,21 +990,21 @@
         label: "D1",
         date: "9/25",
         title: "抵达 Perth Airport",
-        summary: "入境取行李后前往第一晚民宿，今晚不安排景点。",
+        summary: "入境取行李后前往 Herdsman 第一晚民宿，今晚不安排景点。",
         theme: "抵达珀斯后入住休整",
-        drive: "打车为主",
+        drive: "打车约 25-30 分钟",
         wear: "飞机长裤 + 薄外套",
-        stay: "stay-fremantle",
+        stay: "stay-perth-herdsman",
         cover: photos.perth,
         caption: "Perth skyline",
         timeline: [
           ["晚上", "抵达 Perth Airport，入境、取行李"],
-          ["落地后", "前往 Fremantle / Leeming 民宿"],
+          ["落地后", "前往 Perth / Herdsman 民宿"],
           ["入住后", "整理行李、休息"]
         ],
         stops: [
           stop("d1-airport", "晚上", "Perth Airport", [-31.9403, 115.9672], "入境、取行李，作为西澳环线起点。", photos.perth, "airport"),
-          stop("d1-stay", "入住后", "Fremantle / Leeming 民宿", [-32.080, 115.866], "第一段住宿，方便第二天前往 Fremantle 码头。", photos.fremantle, "stay")
+          stop("d1-stay", "入住后", "Perth / Herdsman 民宿", [-31.928412, 115.815388], "第一晚住宿；次日前往 Fremantle B Shed 码头约 25-30 分钟车程。", photos.perth, "stay")
         ]
       },
       {
@@ -1000,38 +1012,42 @@
         label: "D2",
         date: "9/26",
         title: "Rottnest Island 一日",
-        summary: "早船上岛，骑行串联海湾，下午找 quokka 后回 Fremantle。",
+        summary: "从 Herdsman 自驾到码头，早船上岛骑行；傍晚回到 Fremantle 后换住 Mosman Park。",
         theme: "海岛骑行 / quokka / 透明海湾",
-        drive: "步行、船、骑行",
+        drive: "自驾、船、骑行",
         wear: "短袖 + 防晒衣 + 好走鞋",
-        stay: "stay-fremantle",
+        stay: "stay-mosman-park",
         cover: photos.rottnest,
         caption: "Rottnest Island",
         timeline: [
-          ["7:30-8:15", "前往 Fremantle 码头"],
+          ["07:00-07:30", "Perth / Herdsman 民宿出发，自驾前往 Fremantle B Shed 码头"],
+          ["07:30-08:15", "停车、取票、办理登船"],
           ["8:30-9:00", "坐船去 Rottnest"],
           ["9:30-10:00", "上岛租自行车/电助力车"],
           ["10:00-12:00", "The Basin、Pinkys Beach、Geordie Bay"],
           ["12:00-13:00", "午餐或自带简餐"],
           ["13:00-15:30", "Little Salmon Bay、Parker Point、Henrietta Rocks"],
           ["15:30-16:30", "找 quokka、回码头"],
-          ["16:30-17:30", "坐船回 Fremantle"]
+          ["16:30-17:30", "坐船回 Fremantle"],
+          ["17:30-17:50", "自驾前往 Mosman Park 民宿，入住"]
         ],
         stops: [
-          stop("d2-fremantle", "7:30-8:15", "Fremantle B Shed 码头", [-32.0542, 115.7475], "Rottnest ferry 出发点，建议预留登船时间。", photos.fremantle),
+          stop("d2-herdsman", "07:00", "Perth / Herdsman 民宿", [-31.928412, 115.815388], "退房后自驾前往 Fremantle B Shed 码头，约 25-30 分钟。", photos.perth, "stay"),
+          stop("d2-fremantle", "07:30-08:15", "Fremantle B Shed 码头", [-32.0542, 115.7475], "Rottnest ferry 出发点；从 Herdsman 出发请预留停车与登船时间。", photos.fremantle),
           stop("d2-rottnest", "9:00-10:00", "Rottnest Island Settlement", [-31.996, 115.541], "上岛租车，开始海岛环线。", photos.rottnest),
           stop("d2-basin", "10:00-12:00", "The Basin / Pinkys Beach", [-31.989, 115.532], "水色清亮、礁石围合，适合轻松玩水和拍照。", photos.rottnest),
           stop("d2-salmon", "13:00-15:30", "Little Salmon Bay", [-32.014, 115.522], "小而安静的海湾，适合浮潜和看浅水层次。", photos.rottnest),
           stop("d2-parker", "13:00-15:30", "Parker Point / Henrietta Rocks", [-32.024, 115.544], "东南侧海岸线，礁石、沉船点和蓝绿色海面更有野性。", photos.rottnest),
-          stop("d2-quokka", "15:30-16:30", "Quokka 活动区", [-31.996, 115.540], "回码头前留时间找短尾矮袋鼠。", photos.rottnest)
+          stop("d2-quokka", "15:30-16:30", "Quokka 活动区", [-31.996, 115.540], "回码头前留时间找短尾矮袋鼠。", photos.rottnest),
+          stop("d2-mosman", "17:30-17:50", "Mosman Park 民宿", [-32.009, 115.763], "返航后自驾约 15-20 分钟抵达第二晚民宿。", photos.fremantle, "stay")
         ]
       },
       {
         id: "d3",
         label: "D3",
         date: "9/27",
-        title: "Fremantle 到 Kalbarri",
-        summary: "从珀斯南侧一路北上，白沙丘、尖峰石阵和补给点串成第一段长途。",
+        title: "Mosman Park 到 Kalbarri",
+        summary: "从 Mosman Park 一路北上，白沙丘、尖峰石阵和补给点串成第一段长途。",
         theme: "白沙丘 / 尖峰石阵 / 北线进场",
         drive: "约 6-7 小时纯驾驶",
         wear: "长袖防晒 + 运动鞋",
@@ -1039,7 +1055,7 @@
         cover: photos.pinnacles,
         caption: "The Pinnacles",
         timeline: [
-          ["06:30", "Fremantle 出发"],
+          ["06:30", "Mosman Park 出发"],
           ["08:30-10:00", "Lancelin Sand Dunes 白沙丘，滑沙/拍照"],
           ["10:00-11:15", "Lancelin → Pinnacles Desert"],
           ["11:15-12:45", "尖峰石阵 Pinnacles Desert"],
@@ -1049,7 +1065,7 @@
           ["16:15-18:00", "继续开往 Kalbarri"]
         ],
         stops: [
-          stop("d3-fremantle", "06:30", "Fremantle / Leeming", [-32.080, 115.866], "退房后进入北线长途。", photos.fremantle, "stay"),
+          stop("d3-mosman", "06:30", "Mosman Park 民宿", [-32.009, 115.763], "退房后进入北线长途。", photos.fremantle, "stay"),
           stop("d3-lancelin", "08:30-10:00", "Lancelin Sand Dunes", [-31.0207, 115.3253], "白色沙丘和蓝天对比强烈，可以滑沙，也适合人像。", photos.lancelin),
           stop("d3-pinnacles", "11:15-12:45", "Pinnacles Desert", [-30.6058, 115.1575], "黄色沙漠中的石灰岩柱，西澳北线代表性地貌。", photos.pinnacles),
           stop("d3-cervantes", "12:45-13:15", "Cervantes", [-30.5005, 115.0679], "简餐、加油和厕所点。", photos.pinnacles),
